@@ -9,7 +9,7 @@ import 'package:flutter/widgets.dart';
 
 final Map<String, Widget Function(BuildContext)> appRoutes = {
   'chat': (_) => ChatPage(),
-  'usuarios': (_) => UsersPage(),
+  'users': (_) => UsersPage(),
   'login': (_) => LoginPage(),
   'register': (_) => RegisterPage(),
   'loading': (_) => LoadingPage()
