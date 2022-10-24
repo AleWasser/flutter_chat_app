@@ -1,9 +1,12 @@
+import 'package:chat_app/helpers/show_alert.dart';
 import 'package:chat_app/widgets/blue_button.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:chat_app/widgets/custom_input.dart';
 import 'package:chat_app/widgets/labels.dart';
 import 'package:chat_app/widgets/logo.dart';
+import 'package:chat_app/services/auth_service.dart';
 
 class RegisterPage extends StatelessWidget {
   const RegisterPage({Key? key}) : super(key: key);
@@ -52,6 +55,8 @@ class __FormState extends State<_Form> {
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+
     return Container(
       margin: const EdgeInsets.only(top: 40),
       padding: const EdgeInsets.symmetric(horizontal: 50),
@@ -75,10 +80,28 @@ class __FormState extends State<_Form> {
             isPassword: true,
           ),
           BlueButton(
-            butttonText: 'Log In',
-            onPressed: () {
-              print('Hello World');
-            },
+            butttonText: 'Create Account',
+            onPressed: authService.isAuthenticating
+                ? null
+                : () async {
+                    FocusScope.of(context).unfocus();
+                    final isAuth = await authService.register(
+                      nameController.text.trim(),
+                      emailController.text.trim(),
+                      passwordController.text.trim(),
+                    );
+
+                    if (!mounted) return;
+                    if (isAuth == true) {
+                      Navigator.pushReplacementNamed(context, 'users');
+                    } else {
+                      showAlert(
+                        context,
+                        'Registration Failed',
+                        isAuth,
+                      );
+                    }
+                  },
           )
         ],
       ),

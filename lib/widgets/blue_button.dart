@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class BlueButton extends StatelessWidget {
   final String butttonText;
-  final void Function() onPressed;
+  final void Function()? onPressed;
 
   const BlueButton({
     Key? key,

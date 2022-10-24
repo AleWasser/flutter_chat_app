@@ -1,6 +1,9 @@
 import 'package:chat_app/widgets/blue_button.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'package:chat_app/services/auth_service.dart';
+import 'package:chat_app/helpers/show_alert.dart';
 import 'package:chat_app/widgets/custom_input.dart';
 import 'package:chat_app/widgets/labels.dart';
 import 'package:chat_app/widgets/logo.dart';
@@ -51,6 +54,8 @@ class __FormState extends State<_Form> {
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+
     return Container(
       margin: const EdgeInsets.only(top: 40),
       padding: const EdgeInsets.symmetric(horizontal: 50),
@@ -70,9 +75,22 @@ class __FormState extends State<_Form> {
           ),
           BlueButton(
             butttonText: 'Log In',
-            onPressed: () {
-              print('Hello World');
-            },
+            onPressed: authService.isAuthenticating
+                ? null
+                : () async {
+                    FocusScope.of(context).unfocus();
+                    final isAuth = await authService.login(
+                      emailController.text.trim(),
+                      passwordController.text.trim(),
+                    );
+
+                    if (!mounted) return;
+                    if (isAuth) {
+                      Navigator.pushReplacementNamed(context, 'users');
+                    } else {
+                      showAlert(context, 'Login Failed', 'Invalid Credentials');
+                    }
+                  },
           )
         ],
       ),
