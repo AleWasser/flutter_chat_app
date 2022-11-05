@@ -2,7 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'package:chat_app/models/messages_response.dart';
+import 'package:chat_app/services/auth_service.dart';
+import 'package:chat_app/services/chat_service.dart';
+import 'package:chat_app/services/socket_service.dart';
 import 'package:chat_app/widgets/chat_message.dart';
 
 class ChatPage extends StatefulWidget {
@@ -13,12 +18,64 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
   final _textController = TextEditingController();
   final _focusNode = FocusNode();
+  late ChatService chatService;
+  late SocketService socketService;
+  late AuthService authService;
   final List<ChatMessage> _messages = [];
-
   bool _isWriting = false;
 
   @override
+  void initState() {
+    authService = Provider.of<AuthService>(context, listen: false);
+    chatService = Provider.of<ChatService>(context, listen: false);
+    socketService = Provider.of<SocketService>(context, listen: false);
+
+    socketService.socket!.on('private-message', _listenMessage);
+
+    _loadHistory(chatService.targetUser.uid);
+    super.initState();
+  }
+
+  void _listenMessage(dynamic payload) {
+    ChatMessage message = ChatMessage(
+      uid: payload['from'],
+      text: payload['message'],
+      animationController: AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 300),
+      ),
+    );
+
+    setState(() {
+      _messages.insert(0, message);
+    });
+
+    message.animationController.forward();
+  }
+
+  Future<void> _loadHistory(String userId) async {
+    List<Message> messages = await chatService.loadMessages(userId);
+
+    final history = messages.map(
+      (message) => ChatMessage(
+        uid: message.from,
+        text: message.message,
+        animationController: AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 0),
+        )..forward(),
+      ),
+    );
+
+    setState(() {
+      _messages.insertAll(0, history);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final targetUser = chatService.targetUser;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -27,9 +84,9 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
             CircleAvatar(
               maxRadius: 14,
               backgroundColor: Colors.blue[100],
-              child: const Text(
-                'Te',
-                style: TextStyle(
+              child: Text(
+                targetUser.name.substring(0, 2),
+                style: const TextStyle(
                   fontSize: 12,
                 ),
               ),
@@ -37,9 +94,9 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
             const SizedBox(
               height: 3,
             ),
-            const Text(
-              'Test',
-              style: TextStyle(
+            Text(
+              targetUser.name,
+              style: const TextStyle(
                 color: Colors.black87,
                 fontSize: 10,
               ),
@@ -133,7 +190,7 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
     _textController.clear();
 
     final newMessage = ChatMessage(
-      uid: '123',
+      uid: authService.user.uid,
       text: text,
       animationController: AnimationController(
         vsync: this,
@@ -148,15 +205,20 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
     setState(() {
       _isWriting = false;
     });
+
+    socketService.emit('private-message', {
+      'from': authService.user.uid,
+      'to': chatService.targetUser.uid,
+      'message': text
+    });
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
     for (var message in _messages) {
       message.animationController.dispose();
     }
-
+    socketService.socket!.off('private-message');
     super.dispose();
   }
 }
